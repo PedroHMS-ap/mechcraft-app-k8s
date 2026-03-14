@@ -5,7 +5,7 @@ metadata:
   namespace: mechcraft
 spec:
   type: ExternalName
-  externalName: cpf-auth-function.example.com
+  externalName: __CPF_AUTH_HOST__
   ports:
     - name: https
       port: 443
