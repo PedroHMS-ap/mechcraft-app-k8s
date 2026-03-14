@@ -4,10 +4,10 @@
 flowchart LR
   Client[Cliente - CPF] --> APIGW[API Gateway - Traefik]
   Backoffice[Backoffice/Admin] --> APIGW
-  APIGW --> Lambda[Serverless CPF Auth]
+  APIGW --> Function[Azure Function CPF Auth]
   APIGW --> API[MechCraft API - NestJS]
 
-  Lambda --> DB[(PostgreSQL Gerenciado)]
+  Function --> DB[(PostgreSQL Gerenciado)]
   API --> DB
 
   API --> Metrics[Endpoints de Metricas]
@@ -17,9 +17,8 @@ flowchart LR
   Observability[New Relic] --> K8s
   Observability --> API
 
-  CICD[GitHub Actions] --> Lambda
+  CICD[GitHub Actions] --> Function
   CICD --> K8s
   CICD --> TerraformK8s[Terraform Infra K8s]
   CICD --> TerraformDB[Terraform Infra DB]
 ```
-

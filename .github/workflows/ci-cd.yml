@@ -65,7 +65,7 @@ jobs:
           done
           if [ -n "${CPF_AUTH_HOST}" ]; then
             sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-lambda.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-function.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
@@ -123,7 +123,7 @@ jobs:
           done
           if [ -n "${CPF_AUTH_HOST}" ]; then
             sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-lambda.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-function.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \

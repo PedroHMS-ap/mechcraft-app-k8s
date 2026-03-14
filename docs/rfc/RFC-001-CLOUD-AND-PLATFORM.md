@@ -7,16 +7,15 @@ Necessidade de infraestrutura gerenciada para Kubernetes, banco relacional, API 
 - Nuvem: Azure.
 - Kubernetes: AKS.
 - Banco: Azure Database for PostgreSQL Flexible Server.
-- Function Serverless: AWS Lambda (modelo portavel por HTTP/gateway).
+- Function Serverless: Azure Functions HTTP Trigger.
 - API Gateway: Traefik em Kubernetes.
 
 ## Justificativa
 - AKS e PostgreSQL gerenciado reduzem operacao de plataforma.
 - Traefik simplifica roteamento e controle de entrada para ambiente K8s.
-- Lambda desacopla autenticacao por CPF da API principal.
+- Azure Function desacopla autenticacao por CPF da API principal sem sair do ecossistema Azure.
 
 ## Impacto
 - Separacao clara de responsabilidades.
-- Pipeline e governanca por contexto (app, infra k8s, infra db, lambda).
+- Pipeline e governanca por contexto (app, infra k8s, infra db, function).
 - Custo operacional menor em relacao a stack autogerenciada.
-

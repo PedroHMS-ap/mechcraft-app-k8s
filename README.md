@@ -59,6 +59,7 @@ npm run test -- --coverage --runInBand
    - `CPF_AUTH_HOST`
    - `NEW_RELIC_LICENSE_KEY` (opcional)
    - `NEW_RELIC_CLUSTER_NAME` (opcional)
+   - `CPF_AUTH_HOST` deve conter apenas o host publico da Azure Function de CPF, sem `https://`
 2. Faça merge em `homolog` ou `main`.
 3. A pipeline publica a imagem Docker e aplica os manifests em `k8s/`.
 
@@ -75,4 +76,4 @@ npm run test -- --coverage --runInBand
 
 ## Observacao
 
-Os manifests de gateway so sao aplicados automaticamente quando o secret `CPF_AUTH_HOST` estiver configurado.
+Os manifests de gateway so sao aplicados automaticamente quando o secret `CPF_AUTH_HOST` estiver configurado com o host da Azure Function de autenticacao CPF.
