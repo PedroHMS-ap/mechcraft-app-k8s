@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    container_name: mechcraft-db
+    environment:
+      POSTGRES_DB: mechcraft
+      POSTGRES_USER: mech
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mech -d mechcraft"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mechcraft-api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://mech:secret@db:5432/mechcraft
+      JWT_SECRET: dev-super-secret
+      JWT_EXPIRES_IN: 1h
+      EXTERNAL_SERVICE_TOKEN: webhook-dev-token
+    command: sh -c "npx prisma migrate deploy && npm run start:prod"
+    depends_on:
+      db:
+        condition: service_healthy

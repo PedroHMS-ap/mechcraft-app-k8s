@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik-gateway
+  namespace: mechcraft
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-gateway
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-gateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-gateway
+subjects:
+  - kind: ServiceAccount
+    name: traefik-gateway
+    namespace: mechcraft
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik-gateway
+  namespace: mechcraft
+  labels:
+    app: traefik-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: traefik-gateway
+  template:
+    metadata:
+      labels:
+        app: traefik-gateway
+    spec:
+      serviceAccountName: traefik-gateway
+      containers:
+        - name: traefik
+          image: traefik:v3.1
+          args:
+            - --providers.kubernetesingress=true
+            - --providers.kubernetesingress.ingressclass=traefik
+            - --entrypoints.web.address=:80
+            - --api.dashboard=true
+          ports:
+            - name: web
+              containerPort: 80
+            - name: dashboard
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-gateway
+  namespace: mechcraft
+spec:
+  selector:
+    app: traefik-gateway
+  type: LoadBalancer
+  ports:
+    - name: web
+      port: 80
+      targetPort: web
+    - name: dashboard
+      port: 8080
+      targetPort: dashboard
+

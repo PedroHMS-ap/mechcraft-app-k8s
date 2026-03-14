@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cpf-auth-lambda-proxy
+  namespace: mechcraft
+spec:
+  type: ExternalName
+  externalName: cpf-auth-lambda.example.com
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mechcraft-api-gateway
+  namespace: mechcraft
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.mechcraft.local
+      http:
+        paths:
+          - path: /auth/cpf/token
+            pathType: Prefix
+            backend:
+              service:
+                name: cpf-auth-lambda-proxy
+                port:
+                  number: 443
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mechcraft-api
+                port:
+                  number: 80
+

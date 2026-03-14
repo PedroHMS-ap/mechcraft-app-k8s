@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: mechcraft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mechcraft-postgres
+  namespace: mechcraft
+  labels:
+    app: mechcraft-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mechcraft-postgres
+  template:
+    metadata:
+      labels:
+        app: mechcraft-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_DB
+              value: "mechcraft"
+            - name: POSTGRES_USER
+              value: "mech"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mechcraft-secrets
+                  key: POSTGRES_PASSWORD
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mechcraft-postgres
+  namespace: mechcraft
+spec:
+  selector:
+    app: mechcraft-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

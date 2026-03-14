@@ -1,0 +1,980 @@
+﻿openapi: 3.0.3
+
+info:
+  title: Mech Craft Core - API de Gestao de Oficina Mecanica
+  description: |
+    API completa para gerenciamento de ordens de servico, servicos, pecas e metricas de uma oficina mecanica.
+    
+    ## Autenticacao
+    
+    - **Endpoints Admin**: Requerem Bearer JWT token com role `admin`, `recepcao` ou `mecanico`
+    - **Endpoints Publicos**: Requerem token de consulta (one-way token)
+    
+    ## Base URLs
+    
+    - **Producao**: `https://api.seu-dominio.com`
+    - **Local**: `http://localhost:3000`
+  version: 1.0.0
+  contact:
+    name: Mech Craft Support
+    email: support@mechcraft.com
+
+servers:
+  - url: https://api.seu-dominio.com
+    description: Producao
+  - url: http://localhost:3000
+    description: Desenvolvimento Local
+
+tags:
+  - name: Work Orders
+    description: Gestao de ordens de servico
+  - name: Services
+    description: Gestao de servicos
+  - name: Parts
+    description: Gestao de pecas/insumos
+  - name: Metrics
+    description: Metricas e relatorios
+  - name: Public
+    description: Endpoints publicos (sem JWT)
+
+security:
+  - BearerAuth: []
+
+paths:
+  /admin-workorders-list:
+    get:
+      tags:
+        - Work Orders
+      summary: Listar Ordens de Servico
+      description: Lista ordens de servico com filtros e paginacao
+      operationId: listWorkOrders
+      parameters:
+        - name: status
+          in: query
+          description: Filtrar por status
+          schema:
+            $ref: '#/components/schemas/WorkOrderStatus'
+        - name: clienteCpfCnpj
+          in: query
+          description: Filtrar por CPF/CNPJ do cliente
+          schema:
+            type: string
+          example: "12345678901"
+        - name: placa
+          in: query
+          description: Filtrar por placa do veiculo
+          schema:
+            type: string
+          example: "ABC1234"
+        - name: dataIni
+          in: query
+          description: Data inicial (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: dataFim
+          in: query
+          description: Data final (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+        - name: page
+          in: query
+          description: Numero da pagina
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Tamanho da pagina
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Lista de ordens de servico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-workorders-detail:
+    get:
+      tags:
+        - Work Orders
+      summary: Detalhar Ordem de Servico
+      description: Retorna detalhes completos de uma OS incluindo cliente, veiculo, itens e pecas
+      operationId: getWorkOrderDetail
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: UUID da ordem de servico
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da ordem de servico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin-services-list:
+    get:
+      tags:
+        - Services
+      summary: Listar Servicos
+      description: Lista servicos com paginacao
+      operationId: listServices
+      parameters:
+        - name: ativo
+          in: query
+          description: Filtrar por status ativo
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Lista de servicos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-services-create:
+    post:
+      tags:
+        - Services
+      summary: Criar Servico
+      description: Cria um novo servico no catalogo
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceDto'
+      responses:
+        '201':
+          description: Servico criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-services-update:
+    patch:
+      tags:
+        - Services
+      summary: Atualizar Servico
+      description: Atualiza dados de um servico existente
+      operationId: updateService
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: UUID do servico
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceDto'
+      responses:
+        '200':
+          description: Servico atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin-services-delete:
+    delete:
+      tags:
+        - Services
+      summary: Deletar Servico (Soft Delete)
+      description: Marca servico como inativo (nao deleta fisicamente)
+      operationId: deleteService
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Servico desativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                    example: "Servico desativado com sucesso"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin-parts-list:
+    get:
+      tags:
+        - Parts
+      summary: Listar Pecas
+      description: Lista pecas/insumos com paginacao
+      operationId: listParts
+      parameters:
+        - name: lowStock
+          in: query
+          description: Filtrar pecas com estoque baixo
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Lista de pecas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-parts-create:
+    post:
+      tags:
+        - Parts
+      summary: Criar Peca
+      description: Cria nova peca/insumo no estoque
+      operationId: createPart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePartDto'
+      responses:
+        '201':
+          description: Peca criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-parts-update:
+    patch:
+      tags:
+        - Parts
+      summary: Atualizar Peca
+      description: Atualiza dados de uma peca (nao altera saldo)
+      operationId: updatePart
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePartDto'
+      responses:
+        '200':
+          description: Peca atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin-parts-delete:
+    delete:
+      tags:
+        - Parts
+      summary: Deletar Peca
+      description: Remove peca do catalogo (apenas se nao estiver em uso)
+      operationId: deletePart
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Peca removida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Peca em uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin-metrics-avg-exec-time:
+    get:
+      tags:
+        - Metrics
+      summary: Tempo Medio de Execucao
+      description: Calcula tempo medio de execucao de OSs por servico
+      operationId: getAvgExecTime
+      parameters:
+        - name: de
+          in: query
+          required: true
+          description: Data inicial (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: ate
+          in: query
+          required: true
+          description: Data final (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+        - name: servicoId
+          in: query
+          description: UUID do servico (opcional)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Metricas calculadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvgExecTimeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /public-workorder-status:
+    get:
+      tags:
+        - Public
+      summary: Consultar Status da OS (Publico)
+      description: Consulta status de OS usando token de consulta (sem JWT)
+      operationId: getPublicWorkOrderStatus
+      security:
+        - ConsultaToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: UUID da ordem de servico
+          schema:
+            type: string
+            format: uuid
+        - name: consultaToken
+          in: query
+          description: Token de consulta (alternativa ao header)
+          schema:
+            type: string
+        - name: token
+          in: query
+          description: Token de consulta (nome alternativo)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status da ordem de servico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWorkOrderStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Token nao fornecido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: OS nao encontrada ou token invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtido via autenticacao JWT
+
+    ConsultaToken:
+      type: apiKey
+      in: header
+      name: X-Consulta-Token
+      description: Token de consulta one-way (approval_token da OS)
+
+  schemas:
+    WorkOrderStatus:
+      type: string
+      enum:
+        - RECEBIDA
+        - EM_DIAGNOSTICO
+        - AGUARDANDO_APROVACAO
+        - EM_EXECUCAO
+        - FINALIZADA
+        - ENTREGUE
+
+    WorkOrderListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/WorkOrderStatus'
+        total_estimado:
+          type: number
+          format: float
+        orcamento_aprovado:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        customer_cpf_cnpj:
+          type: string
+        customer_nome:
+          type: string
+        vehicle_placa:
+          type: string
+        vehicle_modelo:
+          type: string
+        vehicle_marca:
+          type: string
+
+    WorkOrderListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderListItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    WorkOrderDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/WorkOrderStatus'
+        total_estimado:
+          type: number
+        orcamento_aprovado:
+          type: boolean
+        approval_token:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        customer:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            cpf_cnpj:
+              type: string
+            nome:
+              type: string
+            email:
+              type: string
+              nullable: true
+            telefone:
+              type: string
+              nullable: true
+        vehicle:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            placa:
+              type: string
+            modelo:
+              type: string
+            marca:
+              type: string
+            ano:
+              type: integer
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              service_id:
+                type: string
+                format: uuid
+              quantidade:
+                type: integer
+              preco_unit:
+                type: number
+              service_descricao:
+                type: string
+        parts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              part_id:
+                type: string
+                format: uuid
+              quantidade:
+                type: integer
+              preco_unit:
+                type: number
+              part_descricao:
+                type: string
+
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        descricao:
+          type: string
+        precoBase:
+          type: number
+        unidade:
+          type: string
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ServiceListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    CreateServiceDto:
+      type: object
+      required:
+        - descricao
+        - precoBase
+      properties:
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "Troca de oleo"
+        precoBase:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 150.00
+        unidade:
+          type: string
+          maxLength: 10
+          default: "UN"
+          example: "UN"
+        ativo:
+          type: boolean
+          default: true
+
+    UpdateServiceDto:
+      type: object
+      properties:
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 200
+        precoBase:
+          type: number
+          format: float
+          minimum: 0.01
+        unidade:
+          type: string
+          maxLength: 10
+        ativo:
+          type: boolean
+
+    Part:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        descricao:
+          type: string
+        sku:
+          type: string
+          nullable: true
+        precoUnit:
+          type: number
+        saldo:
+          type: integer
+        estoqueMinimo:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    PartListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Part'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    CreatePartDto:
+      type: object
+      required:
+        - descricao
+        - precoUnit
+      properties:
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "Oleo sintetico 5W30"
+        sku:
+          type: string
+          maxLength: 50
+          example: "OIL-5W30-001"
+        precoUnit:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 45.90
+        estoqueMinimo:
+          type: integer
+          minimum: 0
+          default: 0
+          example: 10
+        initialQuantity:
+          type: integer
+          minimum: 0
+          description: Quantidade inicial em estoque
+          example: 50
+
+    UpdatePartDto:
+      type: object
+      properties:
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 200
+        sku:
+          type: string
+          maxLength: 50
+        precoUnit:
+          type: number
+          format: float
+          minimum: 0.01
+        estoqueMinimo:
+          type: integer
+          minimum: 0
+
+    AvgExecTimeByService:
+      type: object
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+        serviceDescricao:
+          type: string
+        avgExecTimeMinutes:
+          type: number
+          format: float
+        totalWorkOrders:
+          type: integer
+
+    AvgExecTimeResponse:
+      type: object
+      properties:
+        periodo:
+          type: object
+          properties:
+            de:
+              type: string
+              format: date
+            ate:
+              type: string
+              format: date
+        metricas:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvgExecTimeByService'
+        totalGeral:
+          type: object
+          properties:
+            avgExecTimeMinutes:
+              type: number
+            totalWorkOrders:
+              type: integer
+
+    PublicWorkOrderStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        statusAtual:
+          $ref: '#/components/schemas/WorkOrderStatus'
+        historicoStatus:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                $ref: '#/components/schemas/WorkOrderStatus'
+              alteradoEm:
+                type: string
+                format: date-time
+        veiculo:
+          type: object
+          properties:
+            placa:
+              type: string
+            marca:
+              type: string
+            modelo:
+              type: string
+        orcamento:
+          type: object
+          properties:
+            total:
+              type: number
+            aprovadoEm:
+              type: string
+              format: date-time
+              nullable: true
+
+    IdResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+  responses:
+    BadRequest:
+      description: Requisicao invalida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Token JWT nao fornecido ou invalido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Token de autenticacao nao fornecido"
+
+    Forbidden:
+      description: Usuario sem permissao (role inadequada)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Acesso negado. Roles permitidas: admin, recepcao, mecanico"
+
+    NotFound:
+      description: Recurso nao encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Dados invalidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            error: "Dados invalidos"
+            details:
+              - "descricao: Descricao deve ter no minimo 3 caracteres"
+              - "precoBase: Preco base deve ser positivo"
+
+
+
+
+

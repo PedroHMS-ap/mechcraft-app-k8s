@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mechcraft-config
+  namespace: mechcraft
+data:
+  NODE_ENV: "production"
+  APP_PORT: "3000"
+  LOG_LEVEL: "info"
+  PRISMA_CLIENT_DEBUG: "false"
+  RATE_LIMIT_MAX: "1000"
+  # Example non-sensitive defaults; override in environment or CI as needed

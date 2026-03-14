@@ -1,0 +1,135 @@
+name: app-k8s-ci-cd
+
+on:
+  push:
+    branches: [homolog, main]
+  pull_request:
+    branches: [homolog, main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run test -- --coverage --runInBand
+
+  deploy-homolog:
+    if: github.event_name == 'push' && github.ref_name == 'homolog'
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: homolog
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Define deploy variables
+        run: |
+          echo "NAMESPACE=mechcraft-homolog" >> $GITHUB_ENV
+          echo "IMAGE_TAG=homolog-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${{ env.IMAGE_TAG }}
+      - uses: azure/setup-kubectl@v4
+      - name: Apply manifests
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
+          CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
+        run: |
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "${NAMESPACE}" create secret generic mechcraft-secrets \
+            --from-literal=DATABASE_URL="${DATABASE_URL}" \
+            --from-literal=JWT_SECRET="${JWT_SECRET}" \
+            --from-literal=EXTERNAL_SERVICE_TOKEN="${EXTERNAL_SERVICE_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          for file in k8s/configmap.yaml k8s/deployment.yaml k8s/service.yaml k8s/hpa.yaml; do
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" "$file" | kubectl apply -f -
+          done
+          if [ -n "${CPF_AUTH_HOST}" ]; then
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-lambda.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+          fi
+          if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
+            kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
+              --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
+              --dry-run=client -o yaml | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-homolog}/g" | kubectl apply -f -
+          fi
+          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${IMAGE_TAG}
+          kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Define deploy variables
+        run: |
+          echo "NAMESPACE=mechcraft" >> $GITHUB_ENV
+          echo "IMAGE_TAG=prod-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${{ env.IMAGE_TAG }}
+      - uses: azure/setup-kubectl@v4
+      - name: Apply manifests
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
+          CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
+        run: |
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "${NAMESPACE}" create secret generic mechcraft-secrets \
+            --from-literal=DATABASE_URL="${DATABASE_URL}" \
+            --from-literal=JWT_SECRET="${JWT_SECRET}" \
+            --from-literal=EXTERNAL_SERVICE_TOKEN="${EXTERNAL_SERVICE_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          for file in k8s/configmap.yaml k8s/deployment.yaml k8s/service.yaml k8s/hpa.yaml; do
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" "$file" | kubectl apply -f -
+          done
+          if [ -n "${CPF_AUTH_HOST}" ]; then
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-lambda.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+          fi
+          if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
+            kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
+              --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
+              --dry-run=client -o yaml | kubectl apply -f -
+            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-prod}/g" | kubectl apply -f -
+          fi
+          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${IMAGE_TAG}
+          kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
