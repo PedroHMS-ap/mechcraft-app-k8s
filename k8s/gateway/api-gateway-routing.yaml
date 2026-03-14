@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: cpf-auth-function-proxy
   namespace: mechcraft
+  annotations:
+    traefik.ingress.kubernetes.io/service.passhostheader: "false"
+    traefik.ingress.kubernetes.io/service.serversscheme: https
 spec:
   type: ExternalName
   externalName: __CPF_AUTH_HOST__
