@@ -82,7 +82,6 @@ jobs:
           EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
           CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
-          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
@@ -108,8 +107,7 @@ jobs:
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
               --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
               --dry-run=client -o yaml | kubectl apply -f -
-            CLUSTER_NAME="${NEW_RELIC_CLUSTER_NAME:-mechcraft-homolog}"
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__NEW_RELIC_CLUSTER_NAME__|${CLUSTER_NAME}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
           fi
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
 
@@ -177,7 +175,6 @@ jobs:
           EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
           CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
-          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
@@ -203,7 +200,6 @@ jobs:
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
               --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
               --dry-run=client -o yaml | kubectl apply -f -
-            CLUSTER_NAME="${NEW_RELIC_CLUSTER_NAME:-mechcraft-prod}"
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__NEW_RELIC_CLUSTER_NAME__|${CLUSTER_NAME}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
           fi
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
