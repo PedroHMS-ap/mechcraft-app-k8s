@@ -38,3 +38,19 @@ spec:
                 name: mechcraft-api
                 port:
                   number: 80
+    - http:
+        paths:
+          - path: /auth/cpf/token
+            pathType: Prefix
+            backend:
+              service:
+                name: cpf-auth-function-proxy
+                port:
+                  number: 443
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mechcraft-api
+                port:
+                  number: 80
