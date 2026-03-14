@@ -84,6 +84,7 @@ jobs:
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
           NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
+          IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "${NAMESPACE}" create secret docker-registry mechcraft-acr \
             --docker-server="${ACR_LOGIN_SERVER}" \
@@ -95,20 +96,21 @@ jobs:
             --from-literal=JWT_SECRET="${JWT_SECRET}" \
             --from-literal=EXTERNAL_SERVICE_TOKEN="${EXTERNAL_SERVICE_TOKEN}" \
             --dry-run=client -o yaml | kubectl apply -f -
-          for file in k8s/configmap.yaml k8s/deployment.yaml k8s/service.yaml k8s/hpa.yaml; do
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" "$file" | kubectl apply -f -
-          done
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/configmap.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__IMAGE__|${IMAGE_REF}|g" k8s/deployment.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/service.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/hpa.yaml | kubectl apply -f -
           if [ -n "${CPF_AUTH_HOST}" ]; then
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-function.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
               --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
               --dry-run=client -o yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-homolog}/g" | kubectl apply -f -
+            CLUSTER_NAME="${NEW_RELIC_CLUSTER_NAME:-mechcraft-homolog}"
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__NEW_RELIC_CLUSTER_NAME__|${CLUSTER_NAME}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
           fi
-          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
 
   deploy-production:
@@ -177,6 +179,7 @@ jobs:
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
           NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
+          IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "${NAMESPACE}" create secret docker-registry mechcraft-acr \
             --docker-server="${ACR_LOGIN_SERVER}" \
@@ -188,18 +191,19 @@ jobs:
             --from-literal=JWT_SECRET="${JWT_SECRET}" \
             --from-literal=EXTERNAL_SERVICE_TOKEN="${EXTERNAL_SERVICE_TOKEN}" \
             --dry-run=client -o yaml | kubectl apply -f -
-          for file in k8s/configmap.yaml k8s/deployment.yaml k8s/service.yaml k8s/hpa.yaml; do
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" "$file" | kubectl apply -f -
-          done
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/configmap.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__IMAGE__|${IMAGE_REF}|g" k8s/deployment.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/service.yaml | kubectl apply -f -
+          sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/hpa.yaml | kubectl apply -f -
           if [ -n "${CPF_AUTH_HOST}" ]; then
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/gateway/api-gateway-routing.yaml | sed "s/cpf-auth-function.example.com/${CPF_AUTH_HOST}/g" | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
               --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
               --dry-run=client -o yaml | kubectl apply -f -
-            sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-prod}/g" | kubectl apply -f -
+            CLUSTER_NAME="${NEW_RELIC_CLUSTER_NAME:-mechcraft-prod}"
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__NEW_RELIC_CLUSTER_NAME__|${CLUSTER_NAME}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
           fi
-          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s

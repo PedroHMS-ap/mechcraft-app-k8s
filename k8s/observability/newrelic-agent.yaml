@@ -55,7 +55,7 @@ spec:
                   key: license_key
                   optional: true
             - name: CLUSTER_NAME
-              value: mechcraft-aks
+              value: __NEW_RELIC_CLUSTER_NAME__
           resources:
             requests:
               cpu: "50m"
