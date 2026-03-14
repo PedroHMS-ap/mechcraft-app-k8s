@@ -58,19 +58,25 @@ npm run test -- --coverage --runInBand
    - `NEW_RELIC_LICENSE_KEY` (opcional)
    - `NEW_RELIC_CLUSTER_NAME` (opcional)
    - `CPF_AUTH_HOST` deve conter apenas o host publico da Azure Function de CPF, sem `https://`
-2. Faça merge em `homolog` ou `main`.
+2. Faca merge em `homolog` ou `main`.
 3. A pipeline publica a imagem no Azure Container Registry e aplica os manifests em `k8s/`.
 
 ## Swagger / Postman
 
 - [OpenAPI local](docs/openapi.yaml)
-- Swagger publicado: `https://<gateway-ou-loadbalancer>/docs`
+- Swagger publicado: `http://20.221.104.166/docs`
+- Healthcheck publicado: `http://20.221.104.166/health`
+- Readiness publicada: `http://20.221.104.166/health/ready`
+- Endpoint de autenticacao CPF: `http://20.221.104.166/auth/cpf/token`
 
 ## Observabilidade
 
 - Agent do New Relic em `k8s/observability/newrelic-agent.yaml`
 - Metricas da aplicacao expostas por `/metrics/*`
 - Logs estruturados JSON com `x-request-id`
+- Templates versionados:
+  - `docs/observability/newrelic-dashboard.json`
+  - `docs/observability/newrelic-alerts.json`
 
 ## Observacao
 
