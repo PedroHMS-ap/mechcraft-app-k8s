@@ -38,7 +38,6 @@ jobs:
           echo "CLUSTER_RESOURCE_GROUP=mechcraft-rg" >> $GITHUB_ENV
           echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
           echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
-          printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
       - name: Ensure ACR and registry credentials
         shell: bash
         run: |
@@ -60,6 +59,14 @@ jobs:
           echo "ACR_USERNAME=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query username -o tsv)" >> $GITHUB_ENV
           echo "ACR_PASSWORD=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query 'passwords[0].value' -o tsv)" >> $GITHUB_ENV
           az acr login --name "${ACR_NAME}"
+      - name: Fetch AKS kubeconfig
+        shell: bash
+        run: |
+          az aks get-credentials \
+            --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+            --name "${CLUSTER_NAME}" \
+            --file /tmp/kubeconfig \
+            --overwrite-existing
       - uses: docker/build-push-action@v5
         with:
           context: .
@@ -124,7 +131,6 @@ jobs:
           echo "CLUSTER_RESOURCE_GROUP=mechcraft-rg" >> $GITHUB_ENV
           echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
           echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
-          printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
       - name: Ensure ACR and registry credentials
         shell: bash
         run: |
@@ -146,6 +152,14 @@ jobs:
           echo "ACR_USERNAME=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query username -o tsv)" >> $GITHUB_ENV
           echo "ACR_PASSWORD=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query 'passwords[0].value' -o tsv)" >> $GITHUB_ENV
           az acr login --name "${ACR_NAME}"
+      - name: Fetch AKS kubeconfig
+        shell: bash
+        run: |
+          az aks get-credentials \
+            --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+            --name "${CLUSTER_NAME}" \
+            --file /tmp/kubeconfig \
+            --overwrite-existing
       - uses: docker/build-push-action@v5
         with:
           context: .
