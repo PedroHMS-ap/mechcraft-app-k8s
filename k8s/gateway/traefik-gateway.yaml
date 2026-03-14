@@ -12,6 +12,9 @@ rules:
   - apiGroups: [""]
     resources: ["services", "endpoints", "secrets"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses", "ingressclasses"]
     verbs: ["get", "list", "watch"]
@@ -84,4 +87,3 @@ spec:
     - name: dashboard
       port: 8080
       targetPort: dashboard
-
