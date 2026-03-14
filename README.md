@@ -50,8 +50,7 @@ npm run test -- --coverage --runInBand
 ## Deploy em Kubernetes
 
 1. Configure os secrets do repositorio no GitHub:
-   - `DOCKERHUB_USERNAME`
-   - `DOCKERHUB_TOKEN`
+   - `AZURE_CREDENTIALS`
    - `KUBE_CONFIG_DATA`
    - `DATABASE_URL`
    - `JWT_SECRET`
@@ -61,7 +60,7 @@ npm run test -- --coverage --runInBand
    - `NEW_RELIC_CLUSTER_NAME` (opcional)
    - `CPF_AUTH_HOST` deve conter apenas o host publico da Azure Function de CPF, sem `https://`
 2. Faça merge em `homolog` ou `main`.
-3. A pipeline publica a imagem Docker e aplica os manifests em `k8s/`.
+3. A pipeline publica a imagem no Azure Container Registry e aplica os manifests em `k8s/`.
 
 ## Swagger / Postman
 

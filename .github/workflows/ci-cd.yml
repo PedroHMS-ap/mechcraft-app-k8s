@@ -28,21 +28,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Define deploy variables
         run: |
           echo "NAMESPACE=mechcraft-homolog" >> $GITHUB_ENV
           echo "IMAGE_TAG=homolog-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "CLUSTER_RESOURCE_GROUP=mechcraft-rg" >> $GITHUB_ENV
+          echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
+          echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
           printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Ensure ACR and AKS pull access
+        shell: bash
+        run: |
+          if ! az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" >/dev/null 2>&1; then
+            az acr create \
+              --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+              --name "${ACR_NAME}" \
+              --sku Basic \
+              --location centralus
+          fi
+
+          az aks update \
+            --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+            --name "${CLUSTER_NAME}" \
+            --attach-acr "${ACR_NAME}" >/dev/null
+
+          echo "ACR_LOGIN_SERVER=$(az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query loginServer -o tsv)" >> $GITHUB_ENV
+          az acr login --name "${ACR_NAME}"
       - uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${{ env.IMAGE_TAG }}
+          tags: ${{ env.ACR_LOGIN_SERVER }}/mechcraft-api:${{ env.IMAGE_TAG }}
       - uses: azure/setup-kubectl@v4
       - name: Apply manifests
         env:
@@ -73,7 +93,7 @@ jobs:
               --dry-run=client -o yaml | kubectl apply -f -
             sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-homolog}/g" | kubectl apply -f -
           fi
-          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${IMAGE_TAG}
+          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
 
   deploy-production:
@@ -86,21 +106,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Define deploy variables
         run: |
           echo "NAMESPACE=mechcraft" >> $GITHUB_ENV
           echo "IMAGE_TAG=prod-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "CLUSTER_RESOURCE_GROUP=mechcraft-rg" >> $GITHUB_ENV
+          echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
+          echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
           printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Ensure ACR and AKS pull access
+        shell: bash
+        run: |
+          if ! az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" >/dev/null 2>&1; then
+            az acr create \
+              --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+              --name "${ACR_NAME}" \
+              --sku Basic \
+              --location centralus
+          fi
+
+          az aks update \
+            --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+            --name "${CLUSTER_NAME}" \
+            --attach-acr "${ACR_NAME}" >/dev/null
+
+          echo "ACR_LOGIN_SERVER=$(az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query loginServer -o tsv)" >> $GITHUB_ENV
+          az acr login --name "${ACR_NAME}"
       - uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${{ env.IMAGE_TAG }}
+          tags: ${{ env.ACR_LOGIN_SERVER }}/mechcraft-api:${{ env.IMAGE_TAG }}
       - uses: azure/setup-kubectl@v4
       - name: Apply manifests
         env:
@@ -131,5 +171,5 @@ jobs:
               --dry-run=client -o yaml | kubectl apply -f -
             sed "s/namespace: mechcraft/namespace: ${NAMESPACE}/g" k8s/observability/newrelic-agent.yaml | sed "s/value: mechcraft-aks/value: ${NEW_RELIC_CLUSTER_NAME:-mechcraft-prod}/g" | kubectl apply -f -
           fi
-          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${{ secrets.DOCKERHUB_USERNAME }}/mechcraft-api:${IMAGE_TAG}
+          kubectl -n "${NAMESPACE}" set image deployment/mechcraft-api api=${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
