@@ -15,6 +15,8 @@ spec:
       labels:
         app: mechcraft-api
     spec:
+      imagePullSecrets:
+        - name: mechcraft-acr
       containers:
         - name: api
           image: mechcraftacr2583.azurecr.io/mechcraft-api:latest

@@ -39,7 +39,7 @@ jobs:
           echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
           echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
           printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
-      - name: Ensure ACR and AKS pull access
+      - name: Ensure ACR and registry credentials
         shell: bash
         run: |
           if ! az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" >/dev/null 2>&1; then
@@ -47,15 +47,18 @@ jobs:
               --resource-group "${CLUSTER_RESOURCE_GROUP}" \
               --name "${ACR_NAME}" \
               --sku Basic \
-              --location centralus
+              --location centralus \
+              --admin-enabled true
           fi
 
-          az aks update \
+          az acr update \
             --resource-group "${CLUSTER_RESOURCE_GROUP}" \
-            --name "${CLUSTER_NAME}" \
-            --attach-acr "${ACR_NAME}" >/dev/null
+            --name "${ACR_NAME}" \
+            --admin-enabled true >/dev/null
 
           echo "ACR_LOGIN_SERVER=$(az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query loginServer -o tsv)" >> $GITHUB_ENV
+          echo "ACR_USERNAME=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query username -o tsv)" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query 'passwords[0].value' -o tsv)" >> $GITHUB_ENV
           az acr login --name "${ACR_NAME}"
       - uses: docker/build-push-action@v5
         with:
@@ -75,6 +78,11 @@ jobs:
           NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "${NAMESPACE}" create secret docker-registry mechcraft-acr \
+            --docker-server="${ACR_LOGIN_SERVER}" \
+            --docker-username="${ACR_USERNAME}" \
+            --docker-password="${ACR_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "${NAMESPACE}" create secret generic mechcraft-secrets \
             --from-literal=DATABASE_URL="${DATABASE_URL}" \
             --from-literal=JWT_SECRET="${JWT_SECRET}" \
@@ -117,7 +125,7 @@ jobs:
           echo "CLUSTER_NAME=mechcraft-aks" >> $GITHUB_ENV
           echo "ACR_NAME=mechcraftacr2583" >> $GITHUB_ENV
           printf '%s' "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > /tmp/kubeconfig
-      - name: Ensure ACR and AKS pull access
+      - name: Ensure ACR and registry credentials
         shell: bash
         run: |
           if ! az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" >/dev/null 2>&1; then
@@ -125,15 +133,18 @@ jobs:
               --resource-group "${CLUSTER_RESOURCE_GROUP}" \
               --name "${ACR_NAME}" \
               --sku Basic \
-              --location centralus
+              --location centralus \
+              --admin-enabled true
           fi
 
-          az aks update \
+          az acr update \
             --resource-group "${CLUSTER_RESOURCE_GROUP}" \
-            --name "${CLUSTER_NAME}" \
-            --attach-acr "${ACR_NAME}" >/dev/null
+            --name "${ACR_NAME}" \
+            --admin-enabled true >/dev/null
 
           echo "ACR_LOGIN_SERVER=$(az acr show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query loginServer -o tsv)" >> $GITHUB_ENV
+          echo "ACR_USERNAME=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query username -o tsv)" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$(az acr credential show --resource-group "${CLUSTER_RESOURCE_GROUP}" --name "${ACR_NAME}" --query 'passwords[0].value' -o tsv)" >> $GITHUB_ENV
           az acr login --name "${ACR_NAME}"
       - uses: docker/build-push-action@v5
         with:
@@ -153,6 +164,11 @@ jobs:
           NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "${NAMESPACE}" create secret docker-registry mechcraft-acr \
+            --docker-server="${ACR_LOGIN_SERVER}" \
+            --docker-username="${ACR_USERNAME}" \
+            --docker-password="${ACR_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "${NAMESPACE}" create secret generic mechcraft-secrets \
             --from-literal=DATABASE_URL="${DATABASE_URL}" \
             --from-literal=JWT_SECRET="${JWT_SECRET}" \
