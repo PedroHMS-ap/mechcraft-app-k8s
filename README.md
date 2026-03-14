@@ -51,7 +51,6 @@ npm run test -- --coverage --runInBand
 
 1. Configure os secrets do repositorio no GitHub:
    - `AZURE_CREDENTIALS`
-   - `KUBE_CONFIG_DATA`
    - `DATABASE_URL`
    - `JWT_SECRET`
    - `EXTERNAL_SERVICE_TOKEN`
