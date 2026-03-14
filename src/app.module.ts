@@ -11,6 +11,7 @@ import { ServicesModule } from '@/modules/services/services.module';
 import { PartsModule } from '@/modules/parts/parts.module';
 import { PublicModule } from '@/modules/public/public.module';
 import { MetricsModule } from '@/modules/metrics/metrics.module';
+import { HealthModule } from '@/modules/health/health.module';
 import { AuthModule } from '@/auth/auth.module';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CpfAuthGuard } from '@/auth/cpf-auth.guard';
@@ -31,6 +32,7 @@ import { RolesGuard } from '@/common/guards/roles.guard';
     PartsModule,
     PublicModule,
     MetricsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

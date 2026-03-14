@@ -44,9 +44,17 @@ spec:
         app: newrelic-infra
     spec:
       serviceAccountName: newrelic-infra
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: newrelic-data
+          emptyDir: {}
       containers:
         - name: newrelic-infra
           image: newrelic/infrastructure-k8s:2.4.0-unprivileged
+          volumeMounts:
+            - name: newrelic-data
+              mountPath: /var/db/newrelic-infra
           env:
             - name: NRIA_LICENSE_KEY
               valueFrom:
