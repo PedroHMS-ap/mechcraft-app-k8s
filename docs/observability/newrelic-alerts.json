@@ -1,0 +1,64 @@
+{
+  "policy": {
+    "name": "MechCraft Production Alerts",
+    "incidentPreference": "PER_POLICY"
+  },
+  "nrqlConditions": [
+    {
+      "name": "MechCraft API CPU alta",
+      "type": "static",
+      "enabled": true,
+      "query": "FROM K8sContainerSample SELECT average(cpuUsedCores) WHERE clusterName = 'mechcraft-aks' AND podName LIKE 'mechcraft-api-%'",
+      "terms": [
+        {
+          "priority": "critical",
+          "operator": "above",
+          "threshold": 0.4,
+          "durationMinutes": 10
+        }
+      ]
+    },
+    {
+      "name": "MechCraft API memoria alta",
+      "type": "static",
+      "enabled": true,
+      "query": "FROM K8sContainerSample SELECT average(memoryWorkingSetBytes / 1048576) WHERE clusterName = 'mechcraft-aks' AND podName LIKE 'mechcraft-api-%'",
+      "terms": [
+        {
+          "priority": "warning",
+          "operator": "above",
+          "threshold": 400,
+          "durationMinutes": 10
+        }
+      ]
+    },
+    {
+      "name": "Pods indisponiveis no deployment",
+      "type": "static",
+      "enabled": true,
+      "query": "FROM K8sDeploymentSample SELECT latest(podsUnavailable) WHERE clusterName = 'mechcraft-aks' AND deploymentName = 'mechcraft-api'",
+      "terms": [
+        {
+          "priority": "critical",
+          "operator": "above",
+          "threshold": 0,
+          "durationMinutes": 5
+        }
+      ]
+    },
+    {
+      "name": "Falha no processamento de ordens de servico",
+      "type": "static",
+      "enabled": true,
+      "query": "FROM Log SELECT count(*) WHERE message LIKE '%integration-error%' OR message LIKE '%webhook%'",
+      "terms": [
+        {
+          "priority": "critical",
+          "operator": "above",
+          "threshold": 0,
+          "durationMinutes": 10
+        }
+      ]
+    }
+  ]
+}
