@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: pedrooohms/mech-craft-api:latest
+          image: mechcraftacr2583.azurecr.io/mechcraft-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
