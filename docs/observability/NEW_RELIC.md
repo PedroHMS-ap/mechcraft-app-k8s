@@ -17,37 +17,27 @@
 
 ### Kubernetes
 
-- CPU, memoria, pods, deployments e eventos do cluster via agente de infraestrutura em `k8s/observability/newrelic-agent.yaml`.
+- CPU, memoria, pods, deployments, eventos e entidades de cluster via `nri-bundle` oficial do New Relic.
+- `kube-state-metrics` habilitado, requisito para a visao de Kubernetes/Cluster Explorer.
 
 ## Componentes da integracao
 
 - Agente Node do New Relic carregado no startup (`node -r newrelic dist/main.js`).
 - Configuracao do agente em `newrelic.js`.
-- Agente de infraestrutura no cluster: `k8s/observability/newrelic-agent.yaml`.
+- Bundle Kubernetes do New Relic configurado em `k8s/observability/newrelic-values.yaml`.
 - Templates versionados:
   - `docs/observability/newrelic-dashboard.json`
   - `docs/observability/newrelic-alerts.json`
 
 ## Pre-requisitos
 
-Criar o secret da license key:
-
-```bash
-kubectl -n mechcraft create secret generic newrelic-license \
-  --from-literal=license_key="<NEW_RELIC_LICENSE_KEY>"
-```
-
-Aplicar o agente de infraestrutura:
-
-```bash
-kubectl apply -f k8s/observability/newrelic-agent.yaml
-```
-
 Garantir que o deployment da API esteja com estas variaveis:
 
 - `NEW_RELIC_ENABLED=true`
 - `NEW_RELIC_APP_NAME=mechcraft-api`
 - `NEW_RELIC_LICENSE_KEY` vindo do secret `newrelic-license`
+
+Para a instrumentacao completa do cluster, a pipeline aplica o chart oficial `newrelic/nri-bundle` com base em `k8s/observability/newrelic-values.yaml`.
 
 ## Como importar dashboard e alertas
 
@@ -79,3 +69,8 @@ Garantir que o deployment da API esteja com estas variaveis:
 - Healthcheck: `http://20.12.160.207/health`
 - Readiness: `http://20.12.160.207/health/ready`
 - Swagger: `http://20.12.160.207/docs`
+
+## Referencia oficial
+
+- New Relic recomenda instalar a integracao Kubernetes via Helm e informa que `kube-state-metrics` e necessario para a integracao funcionar corretamente:
+  - https://docs.newrelic.com/docs/kubernetes-pixie/kubernetes-integration/advanced-configuration/create-your-own-manifest/

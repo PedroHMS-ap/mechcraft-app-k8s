@@ -71,7 +71,7 @@ npm run test -- --coverage --runInBand
 
 ## Observabilidade
 
-- Agent do New Relic em `k8s/observability/newrelic-agent.yaml`
+- Bundle oficial do New Relic via Helm com valores versionados em `k8s/observability/newrelic-values.yaml`
 - Metricas da aplicacao expostas por `/metrics/*`
 - Logs estruturados JSON com `x-request-id`
 - Templates versionados:
