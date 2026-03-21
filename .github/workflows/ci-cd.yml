@@ -106,9 +106,10 @@ jobs:
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__IMAGE__|${IMAGE_REF}|g" k8s/deployment.yaml | kubectl apply -f -
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/service.yaml | kubectl apply -f -
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/hpa.yaml | kubectl apply -f -
-          if [ -n "${CPF_AUTH_HOST}" ]; then
+          CPF_AUTH_HOST_CLEAN="$(printf '%s' "${CPF_AUTH_HOST}" | tr -d '\r\n' | sed -E 's|^https?://||; s|/.*$||')"
+          if [ -n "${CPF_AUTH_HOST_CLEAN}" ]; then
             sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST_CLEAN}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" delete daemonset newrelic-infra --ignore-not-found=true
@@ -227,9 +228,10 @@ jobs:
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__IMAGE__|${IMAGE_REF}|g" k8s/deployment.yaml | kubectl apply -f -
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/service.yaml | kubectl apply -f -
           sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/hpa.yaml | kubectl apply -f -
-          if [ -n "${CPF_AUTH_HOST}" ]; then
+          CPF_AUTH_HOST_CLEAN="$(printf '%s' "${CPF_AUTH_HOST}" | tr -d '\r\n' | sed -E 's|^https?://||; s|/.*$||')"
+          if [ -n "${CPF_AUTH_HOST_CLEAN}" ]; then
             sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/gateway/traefik-gateway.yaml | kubectl apply -f -
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
+            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST_CLEAN}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
             kubectl -n "${NAMESPACE}" delete daemonset newrelic-infra --ignore-not-found=true
