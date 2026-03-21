@@ -78,7 +78,12 @@ async function bootstrap() {
   const rateLimiter = createRateLimiter(15 * 60 * 1000, Number(process.env.RATE_LIMIT_MAX ?? 100));
   app.use((req, res, next) => {
     const path = req.path || req.url;
-    if (path.startsWith('/docs') || path.startsWith('/docs-json') || path === '/health') {
+    if (
+      path.startsWith('/docs') ||
+      path.startsWith('/docs-json') ||
+      path === '/health' ||
+      path === '/health/ready'
+    ) {
       return next();
     }
     return rateLimiter(req, res, next);

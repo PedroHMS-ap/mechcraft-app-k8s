@@ -5,6 +5,7 @@ import { PrismaWorkOrderRepository } from './infra/prisma-workorder.repository';
 import { WorkOrderRepository } from './domain/workorder.repository';
 import { CreateWorkOrderDto, UpdateWorkOrderStatusDto } from './dto';
 import { AddPartItemDto, AddServiceItemDto } from './items.dto';
+import { noticeError, recordCustomEvent } from '@/common/observability/newrelic';
 
 @Injectable()
 export class WorkOrdersService {
@@ -32,7 +33,21 @@ export class WorkOrdersService {
             where: { id: order.customerId },
           })) ?? { id: order.customerId };
 
-    await this.notifier.sendEstimate({ workOrderId: order.id, customer, requestedBy } as any);
+    try {
+      await this.notifier.sendEstimate({ workOrderId: order.id, customer, requestedBy } as any);
+    } catch (error) {
+      noticeError(error, {
+        workOrderId: order.id,
+        channel: 'budget_notification',
+        operation: 'send_estimate',
+      });
+      recordCustomEvent('WorkOrderIntegrationFailure', {
+        channel: 'budget_notification',
+        failureType: 'send_estimate_failed',
+        workOrderId: order.id,
+      });
+      throw error;
+    }
     return this.repo.updateStatus(id, WorkOrderStatus.WAITING_APPROVAL as any);
   }
 
@@ -201,4 +216,3 @@ export class WorkOrdersService {
     return this.repo.removePartItem(itemId);
   }
 }
-
