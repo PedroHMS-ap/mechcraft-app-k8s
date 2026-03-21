@@ -75,7 +75,7 @@ Garantir que o deployment da API esteja com estas variaveis:
 
 ## Endpoints uteis na demonstracao
 
-- Gateway: `http://20.221.104.166`
-- Healthcheck: `http://20.221.104.166/health`
-- Readiness: `http://20.221.104.166/health/ready`
-- Swagger: `http://20.221.104.166/docs`
+- Gateway: `http://20.12.160.207`
+- Healthcheck: `http://20.12.160.207/health`
+- Readiness: `http://20.12.160.207/health/ready`
+- Swagger: `http://20.12.160.207/docs`

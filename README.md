@@ -64,10 +64,10 @@ npm run test -- --coverage --runInBand
 ## Swagger / Postman
 
 - [OpenAPI local](docs/openapi.yaml)
-- Swagger publicado: `http://20.221.104.166/docs`
-- Healthcheck publicado: `http://20.221.104.166/health`
-- Readiness publicada: `http://20.221.104.166/health/ready`
-- Endpoint de autenticacao CPF: `http://20.221.104.166/auth/cpf/token`
+- Swagger publicado: `http://20.12.160.207/docs`
+- Healthcheck publicado: `http://20.12.160.207/health`
+- Readiness publicada: `http://20.12.160.207/health/ready`
+- Endpoint de autenticacao CPF: `http://20.12.160.207/auth/cpf/token`
 
 ## Observabilidade
 
