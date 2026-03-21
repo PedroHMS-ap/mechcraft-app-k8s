@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { recordCustomEvent } from '../observability/newrelic';
 
 interface BudgetNotificationPayload {
   workOrderId: number;
@@ -11,14 +12,20 @@ export class BudgetNotifierService {
   private readonly logger = new Logger(BudgetNotifierService.name);
 
   async sendEstimate(payload: BudgetNotificationPayload) {
-    this.logger.log(
-      JSON.stringify({
-        event: 'workorder.estimate_sent',
-        workOrderId: payload.workOrderId,
-        customerEmail: payload.customer?.email ?? null,
-        requestedBy: payload.requestedBy,
-        timestamp: new Date().toISOString(),
-      }),
-    );
+    const eventPayload = {
+      event: 'workorder.estimate_sent',
+      workOrderId: payload.workOrderId,
+      customerEmail: payload.customer?.email ?? null,
+      requestedBy: payload.requestedBy,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.logger.log(JSON.stringify(eventPayload));
+    recordCustomEvent('WorkOrderIntegrationProcessed', {
+      channel: 'budget_notification',
+      workOrderId: payload.workOrderId,
+      requestedBy: payload.requestedBy,
+      customerEmailPresent: Boolean(payload.customer?.email),
+    });
   }
 }

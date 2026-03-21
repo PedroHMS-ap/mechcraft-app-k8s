@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { WorkOrderRepository, CreateWorkOrderData } from '../domain/workorder.repository';
 import { WorkOrder, WorkOrderStatus } from '../domain/entities';
+import { recordCustomEvent } from '@/common/observability/newrelic';
 
 @Injectable()
 export class PrismaWorkOrderRepository implements WorkOrderRepository {
@@ -61,6 +62,17 @@ export class PrismaWorkOrderRepository implements WorkOrderRepository {
       });
       return fullOrder ?? order;
     });
+
+    recordCustomEvent('WorkOrderCreated', {
+      workOrderId: created.id,
+      publicCode: (created as any).publicCode ?? null,
+      customerId: data.customerId,
+      vehicleId: data.vehicleId,
+      status: (created as any).status ?? WorkOrderStatus.RECEIVED,
+      serviceItemCount: data.serviceItems?.length ?? 0,
+      partItemCount: data.partItems?.length ?? 0,
+    });
+
     return created as unknown as WorkOrder;
   }
 
@@ -96,9 +108,47 @@ export class PrismaWorkOrderRepository implements WorkOrderRepository {
   }
 
   async updateStatus(id: number, status: WorkOrderStatus, meta: any = {}): Promise<WorkOrder> {
-    // Build update payload from status and optional meta (timestamps, approvers, etc)
+    const previous =
+      this.prisma?.workOrder?.findUnique instanceof Function
+        ? await this.prisma.workOrder.findUnique({
+            where: { id },
+            select: {
+              id: true,
+              publicCode: true,
+              status: true,
+              createdAt: true,
+              estimateSentAt: true,
+              startedAt: true,
+              finishedAt: true,
+            },
+          })
+        : null;
+
     const data: any = { status: status as any, ...meta };
     const updated = await this.prisma.workOrder.update({ where: { id }, data });
+
+    if (previous) {
+      recordCustomEvent('WorkOrderStatusChanged', {
+        workOrderId: updated.id,
+        publicCode: previous.publicCode,
+        fromStatus: previous.status,
+        toStatus: updated.status,
+        approvedBy: (updated as any).approvedBy ?? null,
+        deniedBy: (updated as any).deniedBy ?? null,
+      });
+
+      const stage = this.resolveStageName(previous.status as WorkOrderStatus, updated.status as WorkOrderStatus);
+      const durationHours = this.calculateStageDurationHours(previous, updated);
+      if (stage && durationHours !== null) {
+        recordCustomEvent('WorkOrderStageDuration', {
+          workOrderId: updated.id,
+          publicCode: previous.publicCode,
+          stage,
+          durationHours,
+        });
+      }
+    }
+
     return updated as unknown as WorkOrder;
   }
 
@@ -203,5 +253,59 @@ export class PrismaWorkOrderRepository implements WorkOrderRepository {
     const p = await this.prisma.part.findUnique({ where: { id: partId }, select: { id: true, unitPrice: true, active: true, stockQty: true } });
     if (!p) return null;
     return { id: p.id, unitPrice: p.unitPrice?.toString(), active: p.active, stockQty: p.stockQty };
+  }
+
+  private resolveStageName(previousStatus: WorkOrderStatus, nextStatus: WorkOrderStatus) {
+    if (previousStatus === WorkOrderStatus.DIAGNOSING && nextStatus === WorkOrderStatus.WAITING_APPROVAL) {
+      return 'DIAGNOSING';
+    }
+    if (previousStatus === WorkOrderStatus.IN_PROGRESS && nextStatus === WorkOrderStatus.FINISHED) {
+      return 'EXECUTION';
+    }
+    if (previousStatus === WorkOrderStatus.FINISHED && nextStatus === WorkOrderStatus.DELIVERED) {
+      return 'FINALIZATION';
+    }
+    return null;
+  }
+
+  private calculateStageDurationHours(
+    previous: {
+      createdAt: Date;
+      estimateSentAt: Date | null;
+      startedAt: Date | null;
+      finishedAt: Date | null;
+      status: WorkOrderStatus | string;
+    },
+    updated: any,
+  ) {
+    if (
+      previous.status === WorkOrderStatus.DIAGNOSING &&
+      updated.status === WorkOrderStatus.WAITING_APPROVAL
+    ) {
+      const end = updated.estimateSentAt ?? new Date();
+      return (end.getTime() - previous.createdAt.getTime()) / 36e5;
+    }
+
+    if (
+      previous.status === WorkOrderStatus.IN_PROGRESS &&
+      updated.status === WorkOrderStatus.FINISHED &&
+      updated.finishedAt &&
+      (previous.startedAt ?? updated.startedAt)
+    ) {
+      const start = previous.startedAt ?? updated.startedAt;
+      return (updated.finishedAt.getTime() - start.getTime()) / 36e5;
+    }
+
+    if (
+      previous.status === WorkOrderStatus.FINISHED &&
+      updated.status === WorkOrderStatus.DELIVERED &&
+      updated.deliveredAt &&
+      (previous.finishedAt ?? updated.finishedAt)
+    ) {
+      const start = previous.finishedAt ?? updated.finishedAt;
+      return (updated.deliveredAt.getTime() - start.getTime()) / 36e5;
+    }
+
+    return null;
   }
 }

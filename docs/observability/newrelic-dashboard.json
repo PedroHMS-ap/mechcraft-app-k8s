@@ -1,49 +1,44 @@
 {
-  "name": "MechCraft Operations Dashboard",
+  "name": "MechCraft Observability",
   "permissions": "PUBLIC_READ_ONLY",
   "pages": [
     {
       "name": "Plataforma",
       "widgets": [
         {
-          "title": "Pods prontos por deployment",
-          "layout": {
-            "column": 1,
-            "row": 1,
-            "width": 6,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.billboard"
-          },
+          "title": "Latencia p95 por rota",
+          "layout": { "column": 1, "row": 1, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.line" },
           "rawConfiguration": {
             "nrqlQueries": [
               {
-                "accountIds": [
-                  0
-                ],
-                "query": "FROM K8sDeploymentSample SELECT latest(podsAvailable) FACET deploymentName WHERE clusterName = 'mechcraft-aks'"
+                "accountIds": [0],
+                "query": "FROM Transaction SELECT percentile(duration, 95) FACET path TIMESERIES 1 minute WHERE appName = 'mechcraft-api'"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Healthchecks e uptime",
+          "layout": { "column": 7, "row": 1, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.billboard" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM HealthCheckResult SELECT percentage(count(*), WHERE isHealthy = true) FACET checkType SINCE 30 minutes ago"
               }
             ]
           }
         },
         {
           "title": "CPU media por pod",
-          "layout": {
-            "column": 7,
-            "row": 1,
-            "width": 6,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.line"
-          },
+          "layout": { "column": 1, "row": 4, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.line" },
           "rawConfiguration": {
             "nrqlQueries": [
               {
-                "accountIds": [
-                  0
-                ],
+                "accountIds": [0],
                 "query": "FROM K8sContainerSample SELECT average(cpuUsedCores) FACET podName TIMESERIES WHERE clusterName = 'mechcraft-aks' AND podName LIKE 'mechcraft-api-%'"
               }
             ]
@@ -51,44 +46,26 @@
         },
         {
           "title": "Memoria media por pod",
-          "layout": {
-            "column": 1,
-            "row": 4,
-            "width": 6,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.line"
-          },
+          "layout": { "column": 7, "row": 4, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.line" },
           "rawConfiguration": {
             "nrqlQueries": [
               {
-                "accountIds": [
-                  0
-                ],
+                "accountIds": [0],
                 "query": "FROM K8sContainerSample SELECT average(memoryWorkingSetBytes / 1048576) FACET podName TIMESERIES WHERE clusterName = 'mechcraft-aks' AND podName LIKE 'mechcraft-api-%'"
               }
             ]
           }
         },
         {
-          "title": "Eventos do cluster",
-          "layout": {
-            "column": 7,
-            "row": 4,
-            "width": 6,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.table"
-          },
+          "title": "Falhas HTTP e processamento de OS",
+          "layout": { "column": 1, "row": 7, "width": 12, "height": 3 },
+          "visualization": { "id": "viz.table" },
           "rawConfiguration": {
             "nrqlQueries": [
               {
-                "accountIds": [
-                  0
-                ],
-                "query": "FROM K8sEventSample SELECT latest(message) FACET involvedObjectName, reason WHERE clusterName = 'mechcraft-aks' LIMIT 20"
+                "accountIds": [0],
+                "query": "FROM WorkOrderProcessingFailure SELECT count(*) FACET failureType, path SINCE 24 hours ago LIMIT 50"
               }
             ]
           }
@@ -96,66 +73,71 @@
       ]
     },
     {
-      "name": "APIs e Negocio",
+      "name": "Negocio",
       "widgets": [
         {
-          "title": "Volume diario de OS",
-          "layout": {
-            "column": 1,
-            "row": 1,
-            "width": 4,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.markdown"
-          },
+          "title": "Volume diario de ordens de servico",
+          "layout": { "column": 1, "row": 1, "width": 4, "height": 3 },
+          "visualization": { "id": "viz.line" },
           "rawConfiguration": {
-            "text": "Consumir `GET /metrics/daily-volume` pelo gateway e publicar o resultado como dashboard operacional durante a demonstracao."
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM WorkOrderCreated SELECT count(*) TIMESERIES 1 day SINCE 30 days ago"
+              }
+            ]
           }
         },
         {
-          "title": "Tempo medio por status",
-          "layout": {
-            "column": 5,
-            "row": 1,
-            "width": 4,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.markdown"
-          },
+          "title": "Tempo medio por etapa",
+          "layout": { "column": 5, "row": 1, "width": 4, "height": 3 },
+          "visualization": { "id": "viz.bar" },
           "rawConfiguration": {
-            "text": "Consumir `GET /metrics/avg-time-by-status` para mostrar diagnostico, execucao e finalizacao."
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM WorkOrderStageDuration SELECT average(durationHours) FACET stage SINCE 30 days ago"
+              }
+            ]
           }
         },
         {
           "title": "Falhas de integracao",
-          "layout": {
-            "column": 9,
-            "row": 1,
-            "width": 4,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.markdown"
-          },
+          "layout": { "column": 9, "row": 1, "width": 4, "height": 3 },
+          "visualization": { "id": "viz.line" },
           "rawConfiguration": {
-            "text": "Consumir `GET /metrics/integration-errors` para acompanhar erros de webhooks e notificacoes."
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM WorkOrderIntegrationFailure SELECT count(*) FACET channel, failureType TIMESERIES 1 hour SINCE 24 hours ago"
+              }
+            ]
           }
         },
         {
-          "title": "Latencia e healthchecks",
-          "layout": {
-            "column": 1,
-            "row": 4,
-            "width": 12,
-            "height": 3
-          },
-          "visualization": {
-            "id": "viz.markdown"
-          },
+          "title": "Transicoes de status",
+          "layout": { "column": 1, "row": 4, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.area" },
           "rawConfiguration": {
-            "text": "Os logs estruturados JSON da API incluem `requestId`, `path`, `statusCode` e `durationMs`. Acompanhar junto com `GET /health` e `GET /health/ready`."
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM WorkOrderStatusChanged SELECT count(*) FACET toStatus TIMESERIES 1 hour SINCE 7 days ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Integracoes processadas",
+          "layout": { "column": 7, "row": 4, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.table" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [0],
+                "query": "FROM WorkOrderIntegrationProcessed SELECT count(*) FACET channel, flow, action, resultStatus SINCE 24 hours ago"
+              }
+            ]
           }
         }
       ]
