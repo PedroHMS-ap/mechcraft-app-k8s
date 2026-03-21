@@ -13,7 +13,7 @@
 - `gateway/api-gateway-routing.yaml`
 
 ## Observabilidade (New Relic)
-- `observability/newrelic-agent.yaml`
+- `observability/newrelic-values.yaml`
 
 Crie o secret antes de aplicar o agente:
 ```bash
@@ -30,6 +30,8 @@ kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/hpa.yaml
 kubectl apply -f k8s/gateway/traefik-gateway.yaml
 kubectl apply -f k8s/gateway/api-gateway-routing.yaml
-kubectl apply -f k8s/observability/newrelic-agent.yaml
+helm upgrade --install newrelic newrelic/nri-bundle \
+  --namespace mechcraft \
+  --create-namespace \
+  -f k8s/observability/newrelic-values.yaml
 ```
-

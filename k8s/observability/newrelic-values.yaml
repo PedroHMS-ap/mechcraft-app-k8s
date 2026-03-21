@@ -1,0 +1,22 @@
+global:
+  licenseKey: __NEW_RELIC_LICENSE_KEY__
+  cluster: __NEW_RELIC_CLUSTER_NAME__
+
+newrelic-infrastructure:
+  enabled: true
+
+kube-state-metrics:
+  enabled: true
+
+nri-kube-events:
+  enabled: true
+
+nri-metadata-injection:
+  enabled: true
+
+newrelic-prometheus-agent:
+  enabled: true
+  lowDataMode: true
+
+newrelic-logging:
+  enabled: false

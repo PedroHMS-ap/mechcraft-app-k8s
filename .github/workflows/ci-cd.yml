@@ -79,6 +79,7 @@ jobs:
           push: true
           tags: ${{ env.ACR_LOGIN_SERVER }}/mechcraft-api:${{ env.IMAGE_TAG }}
       - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
       - name: Apply manifests
         env:
           KUBECONFIG: /tmp/kubeconfig
@@ -87,6 +88,7 @@ jobs:
           EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
           CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
@@ -109,10 +111,21 @@ jobs:
             sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
-            kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
-              --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
-              --dry-run=client -o yaml | kubectl apply -f -
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
+            kubectl -n "${NAMESPACE}" delete daemonset newrelic-infra --ignore-not-found=true
+            kubectl -n "${NAMESPACE}" delete serviceaccount newrelic-infra --ignore-not-found=true
+            kubectl delete clusterrole newrelic-infra --ignore-not-found=true
+            kubectl delete clusterrolebinding newrelic-infra --ignore-not-found=true
+            helm repo add newrelic https://helm-charts.newrelic.com
+            helm repo update
+            NEW_RELIC_CLUSTER="${NEW_RELIC_CLUSTER_NAME:-${CLUSTER_NAME}}"
+            sed "s|__NEW_RELIC_LICENSE_KEY__|${NEW_RELIC_LICENSE_KEY}|g; s|__NEW_RELIC_CLUSTER_NAME__|${NEW_RELIC_CLUSTER}|g" \
+              k8s/observability/newrelic-values.yaml > /tmp/newrelic-values.yaml
+            helm upgrade --install newrelic newrelic/nri-bundle \
+              --namespace "${NAMESPACE}" \
+              --create-namespace \
+              -f /tmp/newrelic-values.yaml \
+              --wait \
+              --timeout 10m
           fi
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
 
@@ -177,6 +190,7 @@ jobs:
           push: true
           tags: ${{ env.ACR_LOGIN_SERVER }}/mechcraft-api:${{ env.IMAGE_TAG }}
       - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
       - name: Apply manifests
         env:
           KUBECONFIG: /tmp/kubeconfig
@@ -185,6 +199,7 @@ jobs:
           EXTERNAL_SERVICE_TOKEN: ${{ secrets.EXTERNAL_SERVICE_TOKEN }}
           CPF_AUTH_HOST: ${{ secrets.CPF_AUTH_HOST }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          NEW_RELIC_CLUSTER_NAME: ${{ secrets.NEW_RELIC_CLUSTER_NAME }}
         run: |
           IMAGE_REF="${ACR_LOGIN_SERVER}/mechcraft-api:${IMAGE_TAG}"
           kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
@@ -207,9 +222,20 @@ jobs:
             sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g; s|__CPF_AUTH_HOST__|${CPF_AUTH_HOST}|g" k8s/gateway/api-gateway-routing.yaml | kubectl apply -f -
           fi
           if [ -n "${NEW_RELIC_LICENSE_KEY}" ]; then
-            kubectl -n "${NAMESPACE}" create secret generic newrelic-license \
-              --from-literal=license_key="${NEW_RELIC_LICENSE_KEY}" \
-              --dry-run=client -o yaml | kubectl apply -f -
-            sed "s|namespace: mechcraft|namespace: ${NAMESPACE}|g" k8s/observability/newrelic-agent.yaml | kubectl apply -f -
+            kubectl -n "${NAMESPACE}" delete daemonset newrelic-infra --ignore-not-found=true
+            kubectl -n "${NAMESPACE}" delete serviceaccount newrelic-infra --ignore-not-found=true
+            kubectl delete clusterrole newrelic-infra --ignore-not-found=true
+            kubectl delete clusterrolebinding newrelic-infra --ignore-not-found=true
+            helm repo add newrelic https://helm-charts.newrelic.com
+            helm repo update
+            NEW_RELIC_CLUSTER="${NEW_RELIC_CLUSTER_NAME:-${CLUSTER_NAME}}"
+            sed "s|__NEW_RELIC_LICENSE_KEY__|${NEW_RELIC_LICENSE_KEY}|g; s|__NEW_RELIC_CLUSTER_NAME__|${NEW_RELIC_CLUSTER}|g" \
+              k8s/observability/newrelic-values.yaml > /tmp/newrelic-values.yaml
+            helm upgrade --install newrelic newrelic/nri-bundle \
+              --namespace "${NAMESPACE}" \
+              --create-namespace \
+              -f /tmp/newrelic-values.yaml \
+              --wait \
+              --timeout 10m
           fi
           kubectl -n "${NAMESPACE}" rollout status deployment/mechcraft-api --timeout=180s
