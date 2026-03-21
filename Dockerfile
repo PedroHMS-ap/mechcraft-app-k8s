@@ -32,6 +32,7 @@ ENV NODE_ENV=production
 # Copiar artefatos necessários para rodar
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
+COPY --from=build /app/newrelic.js ./newrelic.js
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 

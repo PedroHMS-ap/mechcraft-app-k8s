@@ -34,6 +34,19 @@ spec:
                 name: mechcraft-config
             - secretRef:
                 name: mechcraft-secrets
+          env:
+            - name: NEW_RELIC_ENABLED
+              value: "true"
+            - name: NEW_RELIC_APP_NAME
+              value: mechcraft-api
+            - name: NEW_RELIC_LOG_LEVEL
+              value: info
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: newrelic-license
+                  key: license_key
+                  optional: true
           readinessProbe:
             httpGet:
               path: /health/ready

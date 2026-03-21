@@ -1,62 +1,77 @@
 # Observabilidade com New Relic
 
-## Integracao
+## O que fica monitorado
 
+### Aplicacao
+
+- Latencia das APIs via APM do agente Node (`Transaction`).
+- Healthchecks e uptime via transacoes `/health` e `/health/ready` mais eventos `HealthCheckResult`.
+- Logs estruturados em JSON com `requestId`, `path`, `statusCode`, `durationMs`, `trace.id` e `span.id`.
+- Eventos de negocio e integracao:
+  - `WorkOrderCreated`
+  - `WorkOrderStatusChanged`
+  - `WorkOrderStageDuration`
+  - `WorkOrderIntegrationProcessed`
+  - `WorkOrderIntegrationFailure`
+  - `WorkOrderProcessingFailure`
+
+### Kubernetes
+
+- CPU, memoria, pods, deployments e eventos do cluster via agente de infraestrutura em `k8s/observability/newrelic-agent.yaml`.
+
+## Componentes da integracao
+
+- Agente Node do New Relic carregado no startup (`node -r newrelic dist/main.js`).
+- Configuracao do agente em `newrelic.js`.
 - Agente de infraestrutura no cluster: `k8s/observability/newrelic-agent.yaml`.
-- Logs estruturados da API em JSON ja disponiveis via `RequestLoggerInterceptor`.
-- Metricas de negocio expostas em:
-  - `GET /metrics/daily-volume`
-  - `GET /metrics/avg-time-by-status`
-  - `GET /metrics/integration-errors`
 - Templates versionados:
   - `docs/observability/newrelic-dashboard.json`
   - `docs/observability/newrelic-alerts.json`
 
 ## Pre-requisitos
 
-Criar secret no cluster com a license key:
+Criar o secret da license key:
 
 ```bash
 kubectl -n mechcraft create secret generic newrelic-license \
   --from-literal=license_key="<NEW_RELIC_LICENSE_KEY>"
 ```
 
-Aplicar agente:
+Aplicar o agente de infraestrutura:
 
 ```bash
 kubectl apply -f k8s/observability/newrelic-agent.yaml
 ```
 
-## Importacao rapida no New Relic
+Garantir que o deployment da API esteja com estas variaveis:
+
+- `NEW_RELIC_ENABLED=true`
+- `NEW_RELIC_APP_NAME=mechcraft-api`
+- `NEW_RELIC_LICENSE_KEY` vindo do secret `newrelic-license`
+
+## Como importar dashboard e alertas
 
 1. Abra `Dashboards` no New Relic.
-2. Crie um dashboard novo usando o template em `docs/observability/newrelic-dashboard.json`.
-3. Crie a policy e as condicoes de alerta usando `docs/observability/newrelic-alerts.json`.
-4. Ajuste o `accountIds` e os thresholds conforme a conta e a carga real do ambiente.
+2. Importe `docs/observability/newrelic-dashboard.json`.
+3. Crie ou atualize a policy com `docs/observability/newrelic-alerts.json`.
+4. Ajuste `accountIds`, nome do cluster e thresholds conforme o ambiente real.
 
-## Dashboards recomendados
+## Cobertura dos requisitos
 
-1. Volume diario de ordens de servico
-   - Fonte: endpoint `/metrics/daily-volume`
-2. Tempo medio por etapa
-   - Fonte: endpoint `/metrics/avg-time-by-status`
-3. Erros em integracoes externas
-   - Fonte: endpoint `/metrics/integration-errors`
-4. CPU e Memoria no Kubernetes
-   - Fonte: New Relic Infrastructure / Kubernetes cluster explorer
-5. Latencia e uptime da API
-   - Fonte: logs estruturados (`durationMs`) + healthcheck (`GET /health`)
-
-## Alertas recomendados
-
-- API Latency alta
-  - Condicao: p95 `durationMs` > 1500ms por 5 min
-- Falha de processamento de OS
-  - Condicao: `totalIntegrationFailures > 0` por 10 min
-- Pod CrashLoop/Down
-  - Condicao: pods indisponiveis no deployment `mechcraft-api`
-- Consumo elevado de recursos
-  - Condicao: CPU > 80% ou memoria > 85% por 10 min
+- Latencia das APIs
+  - Query base: `FROM Transaction SELECT percentile(duration, 95) FACET path TIMESERIES`
+- Consumo de CPU e memoria no Kubernetes
+  - Query base: `FROM K8sContainerSample SELECT average(cpuUsedCores), average(memoryWorkingSetBytes)`
+- Healthchecks e uptime
+  - Query base: `FROM HealthCheckResult SELECT percentage(count(*), WHERE isHealthy = true) FACET checkType`
+- Alertas para falhas no processamento de ordens de servico
+  - Eventos `WorkOrderProcessingFailure` e `WorkOrderIntegrationFailure`
+- Logs estruturados com correlacao
+  - JSON em stdout e `recordLogEvent` com `trace.id`, `span.id` e `requestId`
+- Dashboards de negocio
+  - `WorkOrderCreated` para volume diario
+  - `WorkOrderStageDuration` para tempo medio por etapa
+  - `WorkOrderIntegrationFailure` para erros/falhas de integracao
 
 ## Endpoints uteis na demonstracao
 
